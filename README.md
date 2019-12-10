@@ -2,6 +2,16 @@ reksoft_project
 =====
 
 A Cowboy REST based application: key-value storage using MongoDB
+```
+{deps, [
+    {cowboy, "2.6.0"},
+    {jiffy, "1.0.1"},
+    {mongodb, ".*",
+        {git, "git://github.com/comtihon/mongodb-erlang"}},
+    {sync, ".*",
+        {git, "git://github.com/rustyio/sync.git"}}
+]}.
+```
 
 Build
 -----
