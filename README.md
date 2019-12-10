@@ -1,7 +1,7 @@
 reksoft_project
 =====
 
-A Cowboy REST based application: key-value storage using MongoDb
+A Cowboy REST based application: key-value storage using MongoDB
 
 Build
 -----
