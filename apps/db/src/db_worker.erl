@@ -55,14 +55,36 @@ handle_call({mread, Keys}, _From, #state{collection=C, connection=Conn}=State) -
                     _ -> {reply, [], State}
                end;
 
-%% write data
+%% write data: insert or update existing
 handle_call({write, M}, _From, #state{collection=C, connection=Conn}=State) ->
-    R = case mc_worker_api:insert(Conn, C, create_list(M)) of
-              {{true, _}, Val} ->
-                  merge_maps(Val);
-              _ -> error
-          end,
-    {reply, R, State};
+    {Update, Insert} = case mc_worker_api:find(Conn, C, #{}, #{projector => #{<<"_id">> => false}}) of
+                           {ok, Val} ->
+                               MVal = merge_maps(mc_cursor:rest(Val)),
+                               maps:fold(
+                                   fun(Key, Value, {Acc1, Acc2}) ->
+                                       case maps:find(Key, MVal) of
+                                           {ok, _} ->
+                                               {maps:put(Key, Value, Acc1), Acc2};
+                                           _ ->
+                                               {Acc1, maps:put(Key, Value, Acc2)}
+                                       end end, {#{}, #{}}, M);
+                           [] -> {#{}, M}
+                       end,
+    Inserted = case maps:keys(Insert) of
+                   [] -> #{};
+                   _ -> case mc_worker_api:insert(Conn, C, create_list(Insert)) of
+                            {{true, _}, InsertedValue} ->
+                                merge_maps(InsertedValue);
+                            _ -> #{} end
+               end,
+    Updated = case maps:keys(Update) of
+                  [] -> #{};
+                  _ -> maps:map(
+                      fun(K, V) ->
+                          Command = #{<<"$set">> => #{<<"value">> => V}},
+                          mc_worker_api:update(Conn, C, #{<<"key">> => K}, Command), V end, Update)
+              end,
+    {reply, maps:merge(Inserted, Updated), State};
 
 handle_call({delete, Key}, _From, #state{collection=C, connection=Conn}=State) ->
     {true, R} = mc_worker_api:delete(Conn, C, #{<<"key">> => Key}),
