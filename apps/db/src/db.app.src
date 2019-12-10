@@ -1,0 +1,20 @@
+{application, db,
+ [{description, "An OTP application"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {db_app, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    mongodb
+   ]},
+  {env,[{mongodb, [
+   {database, <<"test">>},
+   {w_mode, safe},
+   {host, "localhost"},
+   {port, 27017}]}]},
+  {modules, []},
+
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.
