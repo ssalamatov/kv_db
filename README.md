@@ -54,3 +54,15 @@ server: Cowboy
 
 {"key2":"value2"}%
 ```
+
+#### GET 200 /db/{key}
+```
+❯ curl -i "http://localhost:9090/db/key1"
+HTTP/1.1 200 OK
+content-length: 22
+content-type: application/json
+date: Tue, 10 Dec 2019 13:18:25 GMT
+server: Cowboy
+
+[{"value":"value111"}]%
+```
