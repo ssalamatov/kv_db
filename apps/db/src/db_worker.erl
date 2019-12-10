@@ -26,8 +26,8 @@ init([]) ->
 %% read all keys
 handle_call(aread, _From, #state{collection=C, connection=Conn}=State) ->
     ValFound = case mc_worker_api:find(Conn, C, #{},
-        #{projector => #{<<"key">> => false, <<"_id">> => false}}) of
-                   {ok, Val} -> mc_cursor:rest(Val);
+        #{projector => #{<<"_id">> => false}}) of
+                   {ok, Val} -> merge_maps(mc_cursor:rest(Val));
                    Other -> Other
                end,
     {reply, ValFound, State};
@@ -58,7 +58,8 @@ handle_call({mread, Keys}, _From, #state{collection=C, connection=Conn}=State) -
 %% write data
 handle_call({write, M}, _From, #state{collection=C, connection=Conn}=State) ->
     R = case mc_worker_api:insert(Conn, C, create_list(M)) of
-              {{true, _}, _} -> ok;
+              {{true, _}, Val} ->
+                  merge_maps(Val);
               _ -> error
           end,
     {reply, R, State};
@@ -84,14 +85,20 @@ handle_info(_, State) ->
 terminate(_Reason, #state{connection=Conn}) ->
     mongo_api:disconnect(Conn).
 
+rows_affected(R) ->
+    case maps:find(<<"n">>, R) of
+        {ok, 0} -> error;
+        _ -> ok
+    end.
+
 create_list(L) ->
     maps:fold(
         fun(Key, Value, Acc) ->
             [#{<<"key">> => Key, <<"value">> => Value} | Acc]
         end, [], L).
 
-rows_affected(R) ->
-    case maps:find(<<"n">>, R) of
-        {ok, 0} -> error;
-        _ -> ok
-    end.
+merge_maps(L) ->
+    lists:foldl(
+        fun(M, Acc) ->
+            maps:put(maps:get(<<"key">>, M),
+                maps:get(<<"value">>, M), Acc) end, #{}, L).
